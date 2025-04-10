@@ -206,7 +206,7 @@ button.pause-button {
       1: 'https://cdn-profiles.tunein.com/s150238/images/logog.jpg',
       2: 'https://cdn-profiles.tunein.com/s286827/images/logog.jpg'
     };
-
+	
     // --- Updated function with BB10 Compatibility ---
     function updateShowInfo() {
       console.log("Fetching NTS live data...");
@@ -278,11 +278,18 @@ button.pause-button {
                      displayTitle = ch.now.embeds.details.name;
                   }
 
-                  // Update the station name display only if it changed
-                  var newText = 'NTS Radio ' + stationNum + ': ' + displayTitle; // Use var for concatenation
-                  if (stationName.textContent !== newText) {
-                     stationName.textContent = newText;
-                  }
+                  // Decode HTML entities before displaying
+function decodeHTMLEntities(text) {
+  var textArea = document.createElement('textarea');
+  textArea.innerHTML = text;
+  return textArea.value;
+}
+
+// Update the station name display only if it changed
+var newText = 'NTS Radio ' + stationNum + ': ' + decodeHTMLEntities(displayTitle);
+if (stationName.textContent !== newText) {
+   stationName.textContent = newText;
+}
                 }
               }); // end forEach
 
@@ -463,4 +470,4 @@ button.pause-button {
   </script>
 </body>
 
-</html>
+</html>"
