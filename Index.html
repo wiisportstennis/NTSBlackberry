@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NTS Radio Stream</title>
+  <link rel="icon" type="image/png" href="https://www.nts.live/favicon-16x16.png?v=47rE43RRzB" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      text-align: center;
+      margin-top: 30px;
+      background-color: black;
+      color: white;
+    }
+
+    .now-playing {
+      color: white;
+      font-size: 1.5rem; /* Adjusted size for potentially longer titles */
+      margin-bottom: 5px;
+    }
+
+    #station-name {
+      color: red;
+      font-weight: bold;
+      font-size: 1.3rem; /* Adjusted size */
+      margin-bottom: 20px;
+      display: block;
+      min-height: 2.5rem; /* Keep min-height */
+      padding: 0 10px; /* Add padding for long names */
+      word-wrap: break-word; /* Allow wrapping */
+    }
+
+    .stations-wrapper {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 0 10px;
+    }
+
+    .button-container {
+      position: relative;
+      width: 100%;
+      max-width: 300px;
+      flex: 1 1 300px; /* Allow shrinking/growing */
+    }
+
+    .station-image {
+      width: 100%;
+      height: 300px;
+      object-fit: cover; /* May not work on BB10, but harmless */
+      border-radius: 10px;
+      display: block;
+       /* Added for smoother transition if image changes */
+      transition: opacity 0.3s ease; /* May not work on BB10 */
+    }
+
+/* General styles for the play/pause button */
+button.play-button, button.pause-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: transparent; /* Ensure no background */
+  color: white; /* Icon color */
+  border: none; /* Remove any borders */
+  font-size: 48px; /* Icon size */
+  cursor: pointer;
+  padding: 0; /* Remove padding */
+  width: 60px; /* Set a fixed width for the button */
+  height: 60px; /* Set a fixed height for the button */
+  display: flex; /* Use flexbox for easy centering */
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%; /* Make it circular */
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.5); /* Optional: Add a shadow to the icon */
+  outline: none; /* Remove the outline */
+}
+
+button.play-button {
+  font-size: 48px; /* Size for the play icon */
+}
+
+button.pause-button {
+  font-size: 48px; /* Size for the pause icon */
+}
+
+/* Ensure icons are centered and have the same size */
+.play-button i, .pause-button i {
+  width: 100%; /* Ensure icon takes full width */
+  height: 100%; /* Ensure icon takes full height */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+ 
+
+    button.play-button:hover {
+      background: transparent; /* Darken on hover */
+      color: #eee;
+    }
+
+    audio {
+      display: none; /* Hide the default player */
+    }
+
+     /* Style for when a station is playing */
+    .playing-station-image {
+        opacity: 0.85; /* Opacity should work */
+        border: 2px solid red; /* Border should work */
+    }
+
+    @media (max-width: 640px) {
+       .now-playing {
+         font-size: 1.2rem;
+       }
+       #station-name {
+         font-size: 1.1rem;
+         min-height: 2rem;
+       }
+      /* Keep horizontal scroll for smaller screens if needed */
+      .stations-wrapper {
+        /* Removed flex-wrap: nowrap; etc. Let wrap work or adjust as needed */
+         justify-content: center; /* Center items when wrapping */
+      }
+      .button-container {
+          max-width: 200px; /* Smaller max width on mobile */
+          flex-basis: 200px;
+      }
+      .station-image {
+        height: 200px;
+      }
+      button.play-button {
+        font-size: 36px;
+        width: 60px;
+        height: 60px;
+        line-height: 60px;
+      }
+    }
+     @media (max-width: 450px) {
+         .button-container {
+             max-width: 150px;
+             flex-basis: 150px;
+         }
+          .station-image {
+             height: 150px;
+          }
+         button.play-button {
+             font-size: 30px;
+             width: 50px;
+             height: 50px;
+             line-height: 50px;
+         }
+     }
+  </style>
+</head>
+
+<body>
+
+  <div class="now-playing">Now Playing:</div>
+  <span id="station-name">Loading...</span> <div class="stations-wrapper">
+    <div class="button-container">
+      <img id="station-image-1" class="station-image" src="https://cdn-profiles.tunein.com/s150238/images/logog.jpg"
+        alt="NTS Radio 1" />
+      <button id="play-pause-1" class="play-button">▶</button>
+    </div>
+
+    <div class="button-container">
+      <img id="station-image-2" class="station-image" src="https://cdn-profiles.tunein.com/s286827/images/logog.jpg"
+        alt="NTS Radio 2" />
+      <button id="play-pause-2" class="play-button">▶</button>
+    </div>
+  </div>
+
+  <audio id="audio-player" preload="none"> <source src="" type="audio/mp3" />
+    Your browser does not support the audio element.
+  </audio>
+
+  <script>
+    var playPauseButton1 = document.getElementById('play-pause-1'); // Use var for wider compatibility
+    var playPauseButton2 = document.getElementById('play-pause-2');
+    var audioPlayer = document.getElementById('audio-player');
+    var stationName = document.getElementById('station-name');
+    var stationImage1 = document.getElementById('station-image-1');
+    var stationImage2 = document.getElementById('station-image-2');
+
+    var currentStation = null; // Use var
+    var updateInterval; // Use var
+
+    var stationData = { // Use var
+      1: { name: 'NTS Radio 1', stream: 'https://stream-relay-geo.ntslive.net/stream' },
+      2: { name: 'NTS Radio 2', stream: 'https://stream-relay-geo.ntslive.net/stream2' }
+    };
+
+    var fallbackImages = { // Use var
+      1: 'https://cdn-profiles.tunein.com/s150238/images/logog.jpg',
+      2: 'https://cdn-profiles.tunein.com/s286827/images/logog.jpg'
+    };
+
+    // --- Updated function with BB10 Compatibility ---
+    function updateShowInfo() {
+      console.log("Fetching NTS live data...");
+      var xhr = new XMLHttpRequest(); // Use var
+      // Add cache buster to URL
+      var apiUrl = 'https://www.nts.live/api/v2/live?_=' + new Date().getTime(); // Use var
+      xhr.open('GET', apiUrl, true);
+      xhr.timeout = 15000;
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            console.log("NTS data received.");
+            try {
+              var data = JSON.parse(xhr.responseText); // Use var
+              var playingStationInfoFound = false; // Use var
+
+              data.results.forEach(function (ch) {
+                var stationNum = ch.channel_name === "1" ? 1 : 2; // Use var
+                var imgElement = document.getElementById('station-image-' + stationNum); // Use var
+
+                // Update image source (BB10 compatible check)
+                var newImageSrc = null; // Use var
+                if (ch && ch.now && ch.now.embeds && ch.now.embeds.details && ch.now.embeds.details.media && ch.now.embeds.details.media.picture_medium_large) {
+                  newImageSrc = ch.now.embeds.details.media.picture_medium_large;
+                }
+
+                if (newImageSrc) {
+                   if (imgElement.src !== newImageSrc) {
+                     imgElement.src = newImageSrc;
+                   }
+                } else {
+                   // Reset to fallback if API provides no image
+                   if (imgElement.src !== fallbackImages[stationNum]) {
+                      imgElement.src = fallbackImages[stationNum];
+                   }
+                }
+
+                // Update the currently playing station's title display
+                if (stationNum === currentStation) {
+                  playingStationInfoFound = true;
+                  var displayTitle = 'Unknown Show'; // Use var
+
+                  // 1. Check for artists array (BB10 compatible check)
+                  if (ch && ch.now && ch.now.artists && typeof ch.now.artists.length === 'number' && ch.now.artists.length > 0) {
+                    // Using a simple loop for full compatibility instead of map/join
+                    var artistNames = []; // Use var
+                    for (var i = 0; i < ch.now.artists.length; i++) {
+                        if (ch.now.artists[i] && ch.now.artists[i].name) {
+                            artistNames.push(ch.now.artists[i].name);
+                        }
+                    }
+                    if (artistNames.length > 0) {
+                        displayTitle = artistNames.join(', ');
+                    }
+                  }
+                  // 2. Fallback to broadcast_title (BB10 compatible check)
+                  else if (ch && ch.now && ch.now.broadcast_title) {
+                    displayTitle = ch.now.broadcast_title;
+                    // Optional: Remove "(R)" marker using older string methods
+                    if (displayTitle.slice(-3) === '(R)') {
+                      displayTitle = displayTitle.substring(0, displayTitle.length - 3).trim();
+                    } else if (displayTitle.slice(-4) === ' (R)') {
+                       displayTitle = displayTitle.substring(0, displayTitle.length - 4).trim();
+                    }
+                  }
+                  // 3. Further fallback to the embedded episode name (BB10 compatible check)
+                  else if (ch && ch.now && ch.now.embeds && ch.now.embeds.details && ch.now.embeds.details.name) {
+                     displayTitle = ch.now.embeds.details.name;
+                  }
+
+                  // Update the station name display only if it changed
+                  var newText = 'NTS Radio ' + stationNum + ': ' + displayTitle; // Use var for concatenation
+                  if (stationName.textContent !== newText) {
+                     stationName.textContent = newText;
+                  }
+                }
+              }); // end forEach
+
+              if (currentStation !== null && !playingStationInfoFound) {
+                 stationName.textContent = 'NTS Radio ' + currentStation + ': Info unavailable';
+              } else if (currentStation === null) {
+                 stationName.textContent = 'Select a station';
+              }
+
+            } catch (e) {
+              console.error("Error parsing JSON or updating UI:", e);
+              if (currentStation !== null) {
+                stationName.textContent = 'NTS Radio ' + currentStation + ': Error parsing info';
+              } else {
+                 stationName.textContent = 'Error loading info';
+              }
+            }
+          } else { // Handle HTTP errors
+            console.error("Error fetching NTS live data. Status:", xhr.status);
+            if (currentStation !== null) {
+              stationName.textContent = 'NTS Radio ' + currentStation + ': Error fetching info';
+            } else {
+               stationName.textContent = 'Error fetching info';
+            }
+          }
+        }
+      }; // end onreadystatechange
+
+      xhr.ontimeout = function () {
+           console.error("NTS API request timed out.");
+            if (currentStation !== null) {
+              stationName.textContent = 'NTS Radio ' + currentStation + ': Request timeout';
+            } else {
+               stationName.textContent = 'Request timeout';
+            }
+      };
+
+      xhr.onerror = function () {
+          console.error("NTS API request network error.");
+           if (currentStation !== null) {
+             stationName.textContent = 'NTS Radio ' + currentStation + ': Network error';
+           } else {
+              stationName.textContent = 'Network error';
+           }
+      };
+
+      xhr.send();
+    }
+    // --- End of updated function ---
+
+    // Fallback image handling
+    stationImage1.onerror = function () { this.src = fallbackImages[1]; };
+    stationImage2.onerror = function () { this.src = fallbackImages[2]; };
+
+    function togglePlayPause(button, stationNumber) {
+      var station = stationData[stationNumber]; // Use var
+      var isPlayingThisStation = (audioPlayer.src === station.stream && !audioPlayer.paused); // Use var
+
+      if (isPlayingThisStation) {
+        audioPlayer.pause();
+        button.textContent = '▶';
+        document.getElementById('station-image-' + stationNumber).classList.remove('playing-station-image');
+        // Don't change stationName text on pause, just reflect state via button/image style
+        // stationName.textContent = 'Paused: ' + stationName.textContent;
+        currentStation = null;
+        if (updateInterval) clearInterval(updateInterval);
+
+      } else {
+        playPauseButton1.textContent = '▶';
+        playPauseButton2.textContent = '▶';
+        stationImage1.classList.remove('playing-station-image');
+        stationImage2.classList.remove('playing-station-image');
+
+        audioPlayer.src = station.stream;
+        audioPlayer.load();
+
+        // BB10 might not return a reliable promise from play()
+        try {
+          var playPromise = audioPlayer.play(); // Use var
+
+          // Check if playPromise is defined and is a Promise (basic check)
+          if (playPromise !== undefined && typeof playPromise.then === 'function') {
+            playPromise.then(function() { // Use function() for older compatibility
+              // Success playing (Promise resolved)
+              console.log('Playing NTS Radio ' + stationNumber + ' (Promise)');
+              currentStation = stationNumber;
+              button.textContent = '❚❚';
+              document.getElementById('station-image-' + stationNumber).classList.add('playing-station-image');
+              stationName.textContent = 'Loading NTS ' + stationNumber + '...';
+              updateShowInfo();
+
+              if (updateInterval) clearInterval(updateInterval);
+              updateInterval = setInterval(updateShowInfo, 60000);
+
+            }).catch(function(error) { // Use function()
+              // Handle error playing audio (Promise rejected)
+              console.error("Error playing audio (Promise):", error);
+              stationName.textContent = 'Error playing NTS ' + stationNumber;
+              button.textContent = '▶';
+              currentStation = null;
+              if (updateInterval) clearInterval(updateInterval);
+            });
+          } else {
+             // If play() doesn't return a promise or behaves synchronously (older browsers)
+             console.log('Playing NTS Radio ' + stationNumber + ' (Sync/No Promise)');
+             // Assume playback started, update UI immediately
+             // Note: Actual playback state might be delayed or fail silently here
+             currentStation = stationNumber;
+             button.textContent = '❚❚';
+             document.getElementById('station-image-' + stationNumber).classList.add('playing-station-image');
+             stationName.textContent = 'Loading NTS ' + stationNumber + '...';
+             updateShowInfo();
+
+             if (updateInterval) clearInterval(updateInterval);
+             updateInterval = setInterval(updateShowInfo, 60000);
+          }
+        } catch (error) {
+            // Catch synchronous errors from play() if any
+            console.error("Error calling audio.play():", error);
+            stationName.textContent = 'Error starting NTS ' + stationNumber;
+            button.textContent = '▶';
+            currentStation = null;
+            if (updateInterval) clearInterval(updateInterval);
+        }
+      }
+    }
+
+    playPauseButton1.addEventListener('click', function () {
+      togglePlayPause(playPauseButton1, 1);
+    });
+
+    playPauseButton2.addEventListener('click', function () {
+      togglePlayPause(playPauseButton2, 2);
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+       stationName.textContent = 'Select a station';
+       // Initial image fetch (BB10 compatible)
+       updateShowInfo();
+    });
+
+     // Audio player event listeners (using function() for compatibility)
+     audioPlayer.addEventListener('pause', function() {
+         console.log('Audio paused event');
+         if (currentStation !== null) { // Check if we thought something was playing
+             playPauseButton1.textContent = '▶';
+             playPauseButton2.textContent = '▶';
+             stationImage1.classList.remove('playing-station-image');
+             stationImage2.classList.remove('playing-station-image');
+             stationName.textContent = 'Stream paused'; // More neutral message
+             currentStation = null;
+             if (updateInterval) clearInterval(updateInterval);
+         }
+     });
+
+      audioPlayer.addEventListener('ended', function() {
+          console.log('Audio ended event');
+          playPauseButton1.textContent = '▶';
+          playPauseButton2.textContent = '▶';
+          stationImage1.classList.remove('playing-station-image');
+          stationImage2.classList.remove('playing-station-image');
+          stationName.textContent = 'Stream ended/disconnected';
+          currentStation = null;
+          if (updateInterval) clearInterval(updateInterval);
+      });
+
+       audioPlayer.addEventListener('error', function(e) {
+           console.error('Audio player error:', e);
+           playPauseButton1.textContent = '▶';
+           playPauseButton2.textContent = '▶';
+           stationImage1.classList.remove('playing-station-image');
+           stationImage2.classList.remove('playing-station-image');
+           stationName.textContent = 'Stream error';
+           currentStation = null;
+           if (updateInterval) clearInterval(updateInterval);
+       });
+
+  </script>
+</body>
+
+</html>
